@@ -1,7 +1,6 @@
 import torch
 import pandas as pd
 import numpy as np
-import sklearn
 import json
 from transformers import GPT2Tokenizer
 from torch.utils.data import Dataset, DataLoader
@@ -17,6 +16,9 @@ with open("test_data.json", "r", encoding="utf-8") as file:
     
 tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 tokenizer.pad_token = tokenizer.eos_token
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 def tokenize_pairs(pairs, max_length=50):
     tokenized_pairs = []
@@ -43,8 +45,9 @@ tokenized_train_data = tokenize_pairs(train_data)
 tokenized_val_data = tokenize_pairs(val_data)
 
 class CornellDataset(Dataset):
-    def __init__(self, tokenized_data):
+    def __init__(self, tokenized_data, device):
         self.data = tokenized_data
+        self.device = device
         
     def __len__(self):
         return len(self.data)
@@ -52,21 +55,21 @@ class CornellDataset(Dataset):
     def __getitem__(self, idx):
         input_ids, target_ids = self.data[idx]
         return {
-            'input_ids' : torch.tensor(input_ids, dtype=torch.long),
-            'target_ids': torch.tensor(target_ids, dtype=torch.long)
+            'input_ids' : torch.tensor(input_ids, dtype=torch.long).to(self.device),
+            'target_ids': torch.tensor(target_ids, dtype=torch.long).to(self.device)
         }
         
-train_dataset = CornellDataset(tokenized_train_data)
+train_dataset = CornellDataset(tokenized_train_data, device)
 train_loader = DataLoader(train_dataset, batch_size=2, shuffle=True)
 
-test_dataset = CornellDataset(tokenized_test_data)
+test_dataset = CornellDataset(tokenized_test_data, device)
 test_loader = DataLoader(test_dataset, batch_size=2, shuffle=True)
 
-val_dataset = CornellDataset(tokenized_val_data)
+val_dataset = CornellDataset(tokenized_val_data, device)
 val_loader = DataLoader(val_dataset, batch_size=2, shuffle=True)
     
 from transformers import AutoModelForCausalLM, AdamW
-model = AutoModelForCausalLM.from_pretrained("gpt2")
+model = AutoModelForCausalLM.from_pretrained("gpt2").to(device)
 
 optimizer = AdamW(model.parameters(), lr=0.0001)
 """
