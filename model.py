@@ -27,16 +27,21 @@ def tokenize_pairs(pairs, max_length=50):
         input_text = ' '.join(input)
         target_text = ' '.join(target)
 
-        # Tokenize input and target
-        input_ids = tokenizer.encode(input_text, add_special_tokens=True, truncation=True, max_length=max_length)
-        target_ids = tokenizer.encode(target_text, add_special_tokens=True, truncation=True, max_length=max_length)
+        # Tokenize input and target, padding them to max_length
+        encoding = tokenizer(
+            input_text,
+            target_text,
+            add_special_tokens=True, 
+            padding='max_length',  # Automatically pads to max_length
+            truncation=True, 
+            max_length=max_length,
+            return_tensors='pt'
+        )
+        
+        input_ids = encoding['input_ids'].squeeze(0)  # Remove batch dimension
+        target_ids = encoding['labels'].squeeze(0) if 'labels' in encoding else input_ids  # Handle labels
 
-        # Pad sequences manually to max_length
-        input_ids = input_ids + [tokenizer.pad_token_id] * (max_length - len(input_ids))
-        target_ids = target_ids + [tokenizer.pad_token_id] * (max_length - len(target_ids))
-
-        # Append tokenized and padded pair
-        tokenized_pairs.append((input_ids[:max_length], target_ids[:max_length]))
+        tokenized_pairs.append((input_ids, target_ids))
 
     return tokenized_pairs
 

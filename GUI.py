@@ -37,8 +37,7 @@ class GUI(QMainWindow):
         
     def load_model(self):
         model = AutoModelForCausalLM.from_pretrained("best_model")
-        tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-        tokenizer.pad_token = tokenizer.eos_token
+        tokenizer = GPT2Tokenizer.from_pretrained("best_tokenizer")
         return model, tokenizer
         
     def generate_response(self, input):
@@ -53,9 +52,6 @@ if __name__ == '__main__':
     window.show()
     app.exec_()
 
-
-#input = tokenizer.encode(input, return_tensors='pt')
-#output = model.generate(input, max_length=100, num_return_sequences=1, no_repeat_ngram_size=2)
 
 
 
