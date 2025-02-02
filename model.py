@@ -67,19 +67,24 @@ test_loader = DataLoader(test_dataset, batch_size=2, shuffle=True)
 
 val_dataset = CornellDataset(tokenized_val_data, device)
 val_loader = DataLoader(val_dataset, batch_size=2, shuffle=True)
+
+split = int(len(tokenized_train_data) * 0.02)
+partial_train_data = tokenized_train_data[:split]
+partial_train_dataset = CornellDataset(partial_train_data, device)
+partial_train_loader = DataLoader(partial_train_dataset, batch_size=2, shuffle=True)
     
 from transformers import AutoModelForCausalLM, AdamW
 model = AutoModelForCausalLM.from_pretrained("gpt2").to(device)
 
-optimizer = AdamW(model.parameters(), lr=0.0001)
-"""
+optimizer = torch.optim.AdamW(model.parameters(), lr=0.0001)
+
 epochs = 3
 best_val_loss = float('inf')
 for epoch in range(epochs):
     print(epoch)
     model.train()
     train_loss = 0
-    for batch in train_loader:
+    for batch in partial_train_loader:
         input_ids = batch['input_ids']
         optimizer.zero_grad()
         outputs = model(input_ids, labels=input_ids)
@@ -93,17 +98,17 @@ for epoch in range(epochs):
     model.eval()
     val_loss = 0
     with torch.no_grad():
-        for batch in val_loader:
-            outputs = model(batch)
-            loss = outputs.loss
-            val_loss += loss.item()
-    
-    val_loss = val_loss / len(val_loader)
-    if val_loss < best_val_loss:
-        best_val_loss = val_loss
+    #    for batch in val_loader:
+    #        outputs = model(batch)
+    #        loss = outputs.loss
+    #        val_loss += loss.item()
+    #
+    #val_loss = val_loss / len(val_loader)
+    #if val_loss < best_val_loss:
+    #    best_val_loss = val_loss
         torch.save(model.state_dict(), "best_model.pth")
 
 model.load_state_dict(torch.load("best_model.pth"))
 model.eval()
 print('success')
-"""
+
