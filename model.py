@@ -2,7 +2,7 @@ import torch
 import pandas as pd
 import numpy as np
 import json
-from transformers import GPT2Tokenizer
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
 from torch.utils.data import Dataset, DataLoader
 
 with open("train_data.json", "r", encoding="utf-8") as file:
@@ -73,8 +73,8 @@ partial_train_data = tokenized_train_data[:split]
 partial_train_dataset = CornellDataset(partial_train_data, device)
 partial_train_loader = DataLoader(partial_train_dataset, batch_size=2, shuffle=True)
     
-from transformers import AutoModelForCausalLM, AdamW
-model = AutoModelForCausalLM.from_pretrained("gpt2").to(device)
+from transformers import AutoModelForCausalLM
+model = AutoModelForCausalLM.from_pretrained("distilgpt2").to(device)
 
 optimizer = torch.optim.AdamW(model.parameters(), lr=0.0001)
 
@@ -106,9 +106,9 @@ for epoch in range(epochs):
     #val_loss = val_loss / len(val_loader)
     #if val_loss < best_val_loss:
     #    best_val_loss = val_loss
-        torch.save(model.state_dict(), "best_model.pth")
+        model.save_pretrained("best_model")
+        tokenizer.save_pretrained("best_tokenizer")
 
-model.load_state_dict(torch.load("best_model.pth"))
-model.eval()
+
 print('success')
 
