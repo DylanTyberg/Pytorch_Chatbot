@@ -26,11 +26,11 @@ def tokenize_pairs(pairs, max_length=50):
         # Join tokens into a single string for tokenization
         input_text = ' '.join(input)
         target_text = ' '.join(target)
+        combined_text = input_text + tokenizer.eos_token + target_text
 
         # Tokenize input and target, padding them to max_length
         encoding = tokenizer(
-            input_text,
-            target_text,
+            combined_text,
             add_special_tokens=True, 
             padding='max_length',  # Automatically pads to max_length
             truncation=True, 
@@ -39,9 +39,10 @@ def tokenize_pairs(pairs, max_length=50):
         )
         
         input_ids = encoding['input_ids'].squeeze(0)  # Remove batch dimension
+        attention_mask = encoding['attention_mask'].squeeze(0)
         target_ids = encoding['labels'].squeeze(0) if 'labels' in encoding else input_ids  # Handle labels
 
-        tokenized_pairs.append((input_ids, target_ids))
+        tokenized_pairs.append((input_ids, target_ids, attention_mask))
 
     return tokenized_pairs
 
@@ -58,10 +59,11 @@ class CornellDataset(Dataset):
         return len(self.data)
     
     def __getitem__(self, idx):
-        input_ids, target_ids = self.data[idx]
+        input_ids, target_ids, attention_mask = self.data[idx]
         return {
             'input_ids' : torch.tensor(input_ids, dtype=torch.long).to(self.device),
-            'target_ids': torch.tensor(target_ids, dtype=torch.long).to(self.device)
+            'target_ids': torch.tensor(target_ids, dtype=torch.long).to(self.device),
+            'attention_mask': torch.tensor(attention_mask, dtype=torch.long).to(self.device)
         }
         
 train_dataset = CornellDataset(tokenized_train_data, device)
@@ -73,17 +75,21 @@ test_loader = DataLoader(test_dataset, batch_size=2, shuffle=True)
 val_dataset = CornellDataset(tokenized_val_data, device)
 val_loader = DataLoader(val_dataset, batch_size=2, shuffle=True)
 
-split = int(len(tokenized_train_data) * 0.02)
+split = int(len(tokenized_train_data) * 0.20)
 partial_train_data = tokenized_train_data[:split]
 partial_train_dataset = CornellDataset(partial_train_data, device)
 partial_train_loader = DataLoader(partial_train_dataset, batch_size=2, shuffle=True)
+
+partial_val_data = tokenized_val_data[:split]
+partial_val_dataset = CornellDataset(partial_val_data, device)
+partial_val_loader = DataLoader(partial_val_dataset, batch_size=2, shuffle=True)
     
 from transformers import AutoModelForCausalLM
 model = AutoModelForCausalLM.from_pretrained("distilgpt2").to(device)
 
-optimizer = torch.optim.AdamW(model.parameters(), lr=0.0001)
+optimizer = torch.optim.AdamW(model.parameters(), lr=0.00005)
 
-epochs = 3
+epochs = 5
 best_val_loss = float('inf')
 for epoch in range(epochs):
     print(epoch)
@@ -91,29 +97,35 @@ for epoch in range(epochs):
     train_loss = 0
     for batch in partial_train_loader:
         input_ids = batch['input_ids']
+        attention_mask = batch['attention_mask']
         optimizer.zero_grad()
-        outputs = model(input_ids, labels=input_ids)
+        outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=input_ids)
         loss = outputs.loss
         loss.backward()
         optimizer.step()
         train_loss += loss.item()
         
-    train_loss = train_loss / len(train_loader)
+    train_loss = train_loss / len(partial_train_loader)
+    print(train_loss)
         
     model.eval()
     val_loss = 0
     with torch.no_grad():
-    #    for batch in val_loader:
-    #        outputs = model(batch)
-    #        loss = outputs.loss
-    #        val_loss += loss.item()
-    #
-    #val_loss = val_loss / len(val_loader)
-    #if val_loss < best_val_loss:
-    #    best_val_loss = val_loss
+        for batch in partial_val_loader:
+            input_ids = batch['input_ids']
+            attention_mask = batch['attention_mask']
+
+            outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=input_ids)
+            loss = outputs.loss
+            val_loss += loss.item()
+            
+    
+    val_loss = val_loss / len(val_loader)
+    print(val_loss)
+    if val_loss < best_val_loss:
+        best_val_loss = val_loss
         model.save_pretrained("best_model")
         tokenizer.save_pretrained("best_tokenizer")
 
 
-print('success')
 
