@@ -75,7 +75,7 @@ test_loader = DataLoader(test_dataset, batch_size=2, shuffle=True)
 val_dataset = CornellDataset(tokenized_val_data, device)
 val_loader = DataLoader(val_dataset, batch_size=2, shuffle=True)
 
-split = int(len(tokenized_train_data) * 0.20)
+split = int(len(tokenized_train_data) * 0.05)
 partial_train_data = tokenized_train_data[:split]
 partial_train_dataset = CornellDataset(partial_train_data, device)
 partial_train_loader = DataLoader(partial_train_dataset, batch_size=2, shuffle=True)
@@ -87,9 +87,9 @@ partial_val_loader = DataLoader(partial_val_dataset, batch_size=2, shuffle=True)
 from transformers import AutoModelForCausalLM
 model = AutoModelForCausalLM.from_pretrained("distilgpt2").to(device)
 
-optimizer = torch.optim.AdamW(model.parameters(), lr=0.00005)
+optimizer = torch.optim.AdamW(model.parameters(), lr=0.0001)
 
-epochs = 5
+epochs = 3
 best_val_loss = float('inf')
 for epoch in range(epochs):
     print(epoch)
