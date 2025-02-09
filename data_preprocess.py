@@ -85,16 +85,7 @@ train_pairs, test_pairs = train_test_split(preprocessed_pairs, test_size=0.1, ra
 train_pairs, val_pairs = train_test_split(train_pairs, test_size=0.1, random_state=42)
 print(f"Train: {len(train_pairs)}, Validation: {len(val_pairs)}, Test: {len(test_pairs)}")
 
-#import nltk
-#nltk.download("punkt_tab")
-
-#def tokenize_pairs(pairs):
-#    return [[word_tokenize(input), word_tokenize(target)] for input, target in pairs]
-    
-#tokenized_train = tokenize_pairs(train_pairs)
-#tokenized_val = tokenize_pairs(val_pairs)
-#tokenized_test = tokenize_pairs(test_pairs)
-
+#saving the data files to be used in model.py file
 with open("train_data.json", "w") as f:
     json.dump(train_pairs, f)
 with open("val_data.json", "w") as f:
